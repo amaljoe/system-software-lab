@@ -1,21 +1,31 @@
 #include <stdio.h>
 #include <string.h>
 
+#define MEMORY_SIZE 100
+
 struct file
 {
     char name[10];
-    int location[50];
+    int location[20];
     int size;
     int starting_address;
+    
 } files[50];
 
+struct file* memory[MEMORY_SIZE];
 int n;
 
 void sequential();
 int search(char[]);
+void input(int);
+void display(int);
 
 int main()
 {
+    for (int i = 0; i < MEMORY_SIZE; i++)
+    {
+        memory[i] = NULL;
+    }
     sequential();
     return 0;
 }
@@ -26,12 +36,7 @@ void sequential()
     scanf("%d", &n);
     for (int i = 0; i < n; i++)
     {
-        printf("Enter the name of file %d:\n", i + 1);
-        scanf("%s", files[i].name);
-        printf("Enter the size of file %d:\n", i + 1);
-        scanf("%s", files[i].size);
-        printf("Enter the starting index of file %d:\n", i + 1);
-        scanf("%s", files[i].starting_address);
+        input(i);
     }
     char key[10];
     printf("Enter the name of file to be searched:\n");
@@ -42,6 +47,7 @@ void sequential()
         printf("File not found\n");
         return;
     }
+    display(index);
 }
 
 // search for a filename in a list of files, return file index or -1 if not found
@@ -55,4 +61,24 @@ int search(char key[])
         }
     }
     return -1;
+}
+
+void input(int i)
+{
+    printf("Enter the name of file %d:\n", i + 1);
+    scanf("%s", files[i].name);
+    printf("Enter the size of file %d:\n", i + 1);
+    scanf("%d", &files[i].size);
+    printf("Enter the starting index of file %d:\n", i + 1);
+    scanf("%d", &files[i].starting_address);
+}
+
+void display(int i)
+{
+    struct file myfile = files[i];
+    printf("Blocks occupied by file %s:\n", myfile.name);
+    for (int i = 0; i < myfile.size; i++)
+    {
+        printf("%d\t", myfile.location[i]);
+    }
 }
