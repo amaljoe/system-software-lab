@@ -1,13 +1,21 @@
 #include <stdio.h>
+#include <string.h>
+
 #define MAX 50
 #define MAXLINES 150
 
-struct
+struct line
 {
+    char loc[MAX];
     char label[MAX];
     char op[MAX];
     char operand[MAX];
-} input[MAXLINES];
+} lines[MAXLINES];
+
+// number of lines
+int num = 0;
+
+void writeLine(struct line *, FILE *);
 
 // a program doing minimal IO operations. Use for reference.
 int main()
@@ -16,21 +24,28 @@ int main()
     char str[MAX];
     FILE *inputFile = fopen("sample_input.txt", "r");
     FILE *interFile = fopen("intermediate.txt", "w");
-    int i = 0;
     // check first line
     fgets(str, MAX, inputFile);
-    sscanf(str, "%s\t%s\t%s", input[i].label, input[i].op, input[i].operand);
+    sscanf(str, "%s\t%s\t%s", lines[num].label, lines[num].op, lines[num].operand);
     // initialise location counter to starting address
-    locctr = input[i].operand;
-    fputs(str, interFile);
+    sscanf(lines[num].operand, "%x", &locctr);
+    strcpy(lines[num].loc, lines[num].operand);
+    writeLine(&lines[num], interFile);
     while (fgets(str, MAX, inputFile) != NULL)
     {
-        i++;
-        sscanf(str, "%s\t%s\t%s", input[i].label, input[i].op, input[i].operand);
-        i++;
-        //printf("%s", str);
+        num++;
+        sscanf(str, "%s\t%s\t%s", lines[num].label, lines[num].op, lines[num].operand);
+        sprintf(lines[num].loc, "%x", locctr);
+        locctr += 3;
+        writeLine(&lines[num], interFile);
     }
-    int n = 4096;
-    printf("%x\n", n);
+    printf("%d, %x\n", locctr, locctr);
     return 0;
+}
+
+void writeLine(struct line *myline, FILE *file)
+{
+    char lineStr[MAX];
+    sprintf(lineStr, "%s\t%s\t%s\t%s\n", myline->loc, myline->label, myline->op, myline->operand);
+    fputs(lineStr, file);
 }

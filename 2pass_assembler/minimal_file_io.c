@@ -11,8 +11,11 @@ int main()
     {
         char str1[MAX], str2[MAX], str3[MAX];
 
+        //HEX and number operations
         //itoa(n,str,10); for integer to ascii (string) with base 10
         //n = atoi(str) for string to int
+        //sprintf(str, "%x", n); int to hex string (alt method)
+        // every conversion can be achieved  with sscanf and sprintf
 
         fputs(str, outputFile);
         // sscanf splits the string as tokens
