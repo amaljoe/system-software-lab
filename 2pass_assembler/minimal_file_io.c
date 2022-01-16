@@ -10,6 +10,10 @@ int main()
     while (fgets(str, MAX, inputFile) != NULL)
     {
         char str1[MAX], str2[MAX], str3[MAX];
+
+        //itoa(n,str,10); for integer to ascii (string) with base 10
+        //n = atoi(str) for string to int
+
         fputs(str, outputFile);
         // sscanf splits the string as tokens
         // or use fscanf directly
