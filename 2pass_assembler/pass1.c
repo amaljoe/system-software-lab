@@ -37,10 +37,15 @@ int main()
         sscanf(str, "%s\t%s\t%s", lines[num].label, lines[num].op, lines[num].operand);
         sprintf(lines[num].loc, "%x", locctr);
         locctr += 3;
+
         writeLine(&lines[num], interFile);
     }
     printf("%d, %x\n", locctr, locctr);
     return 0;
+}
+
+char *getOpcode(char op[], FILE *optab)
+{
 }
 
 void writeLine(struct line *myline, FILE *file)
