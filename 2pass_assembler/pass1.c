@@ -9,12 +9,8 @@ int main()
     FILE *outputFile = fopen("sample_output.txt", "w");
     while (fgets(str, MAX, inputFile) != NULL)
     {
-        char str1[MAX], str2[MAX], str3[MAX];
         fputs(str, outputFile);
-        // sscanf splits the string as tokens
-        // or use fscanf directly
-        sscanf(str, "%s\t%s\t%s", str1, str2, str3);
-        printf("%s | %s | %s\n", str1, str2, str3);
+        printf("%s", str);
     }
     return 0;
 }
