@@ -29,13 +29,14 @@ void writeLine(struct line *, FILE *);
 void readOptab();
 char *getOpcode(char[]);
 
-// a program doing minimal IO operations. Use for reference.
 int main()
 {
     int locctr;
+    int startingAddress;
     char str[MAX];
     FILE *inputFile = fopen("sample_input.txt", "r");
     FILE *interFile = fopen("intermediate.txt", "w");
+    FILE *lenFile = fopen("prolen.txt", "w");
 
     // read and store optab in memory
     readOptab();
@@ -43,11 +44,20 @@ int main()
     // check first line
     fgets(str, MAX, inputFile);
     sscanf(str, "%s\t%s\t%s", lines[num].label, lines[num].op, lines[num].operand);
-    // initialise location counter to starting address
-    sscanf(lines[num].operand, "%X", &locctr);
-    strcpy(lines[num].loc, lines[num].operand);
-    writeLine(&lines[num], interFile);
-    num++;
+    if (strcmp(lines[num].op, "START") == 0)
+    {
+        // initialise location counter to starting address
+        sscanf(lines[num].operand, "%X", &startingAddress);
+        strcpy(lines[num].loc, lines[num].operand);
+        writeLine(&lines[num], interFile);
+        num++;
+    }
+    else
+    {
+        startingAddress = 0;
+    }
+    locctr = startingAddress;
+
     while (fgets(str, MAX, inputFile) != NULL)
     {
         sscanf(str, "%s\t%s\t%s", lines[num].label, lines[num].op, lines[num].operand);
@@ -77,13 +87,11 @@ int main()
         else if (strcmp(lines[num].op, "RESW") == 0)
         {
             int size = atoi(lines[num].operand);
-            printf("size %d\n", size);
             locctr += size * 3;
         }
         else if (strcmp(lines[num].op, "RESB") == 0)
         {
             int size = atoi(lines[num].operand);
-            printf("size %d\n", size);
             locctr += size;
         }
         else if (strcmp(lines[num].op, "END") == 0)
@@ -100,8 +108,10 @@ int main()
         writeLine(&lines[num], interFile);
         num++;
     }
-
-    printf("%x\n", locctr);
+    char len[MAX];
+    sprintf(len, "%X", locctr - startingAddress);
+    fputs(len, lenFile);
+    printf("Pass 1 of 2 completed. Program length: %s", len);
     return 0;
 }
 
