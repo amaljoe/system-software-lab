@@ -24,6 +24,8 @@ struct
 int num = 0;
 // length of optab
 int optabLength = 0;
+// length of symtab
+int symtabLength = 0;
 
 void writeLine(struct line *, FILE *);
 void readOptab();
@@ -35,6 +37,7 @@ int main()
     int startingAddress;
     char str[MAX];
     FILE *inputFile = fopen("sample_input.txt", "r");
+    FILE *symtabFile = fopen("symtab.txt", "w");
     FILE *interFile = fopen("intermediate.txt", "w");
     FILE *lenFile = fopen("prolen.txt", "w");
 
@@ -62,8 +65,17 @@ int main()
     {
         sscanf(str, "%s\t%s\t%s", lines[num].label, lines[num].op, lines[num].operand);
         sprintf(lines[num].loc, "%X", locctr);
+        // if symbol is present, put in symtab
+        if (strcmp(lines[num].label, "**") != 0)
+        {
+            char symStr[MAX];
+            sprintf(symStr, "%s\t%s\n", lines[num].label, lines[num].loc);
+            fputs(symStr, symtabFile);
+            symtabLength++;
+        }
         if (getOpcode(lines[num].op) != NULL)
         {
+            // opcode found in optab
             locctr += 3;
         }
         else if (strcmp(lines[num].op, "WORD") == 0)
