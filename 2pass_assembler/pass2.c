@@ -238,7 +238,7 @@ void readInputs()
     fgets(prolen, MAX, lenFile);
 }
 
-// pad zeroes to left or trim to make string length 6
+// pad zeroes to left or trim to fit length
 char *padZero(char text[], int length)
 {
     char zeroes[] = "000000";
@@ -247,8 +247,8 @@ char *padZero(char text[], int length)
     zeroes[c] = '\0';
     strcat(zeroes, text);
     strcpy(text, zeroes);
-    // truncate to 6 characters
-    text[6] = '\0';
+    // truncate to fit length
+    text[length] = '\0';
     return text;
 }
 
