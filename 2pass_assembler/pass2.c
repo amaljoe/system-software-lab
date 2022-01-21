@@ -2,6 +2,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #define MAX 200
 #define MAXLINES 250
@@ -42,10 +43,11 @@ int symtabLength = 0;
 // length of program in hexadecimal
 char prolen[MAX];
 
-char *padZero(char[]);
+char *padZero(char[], int);
 void readInputs();
 char *searchSymtab(char[]);
 char *getOpcode(char[]);
+void writeTextRecord(struct TEXTRECORD *, FILE *);
 
 int main()
 {
@@ -65,18 +67,117 @@ int main()
         i++;
     }
     // write header record
-    sprintf(str, "H %s %s %s", padZero(pgmName), padZero(startingAddress), padZero(prolen));
+    sprintf(str, "H %s %s %s\n", padZero(pgmName, 6), padZero(startingAddress, 6), padZero(prolen, 6));
     fputs(str, recordFile);
+
+    // initialise first text record
+    struct TEXTRECORD *current = (struct TEXTRECORD *)malloc(sizeof(struct TEXTRECORD));
+    current->length = 0;
+    strcpy(current->startingAddress, lines[i].loc);
+    strcpy(current->text, "");
+
     // loop through all instructions in intermediate file
-    struct TEXTRECORD *current;
     for (; i < num; i++)
     {
+        if (strcmp(lines[i].op, "END") == 0)
+        {
+            break;
+        }
         char *opcode = getOpcode(lines[i].op);
-        char *address = searchSymtab(lines[i].operand);
-        strcpy(str, opcode);
-        strcat(str, address);
-        printf("%s\n", str);
+        char *address = "0";
+        bool indexed = false;
+
+        if (opcode != NULL)
+        {
+            // op found in optab
+            if (strcmp(lines[i].operand, "**") != 0)
+            {
+                // operand present in instruction
+                char *operand = lines[i].operand;
+                char *comma = strchr(operand, ',');
+                indexed = comma != NULL;
+                if (indexed)
+                {
+                    // operand is before ','
+                    *comma = '\0';
+                }
+                address = searchSymtab(operand);
+            }
+            if (address == NULL)
+            {
+                printf("Address not found for %s\n", lines[i].operand);
+                return 1;
+            }
+            padZero(address, 4);
+            // x = 1 in objcode if indexed
+            if (indexed)
+            {
+                char tmp[MAX];
+                strcpy(tmp, address);
+                tmp[1] = '\0';
+                int bit = atoi(tmp);
+                bit += 8;
+                sprintf(tmp, "%X", bit);
+                address[0] = tmp[0];
+            }
+            strcpy(str, opcode);
+            strcat(str, address);
+            strcat(str, " ");
+            strcat(current->text, str);
+            current->length += 3;
+        }
+        else if (strcmp(lines[i].op, "BYTE") == 0)
+        {
+            // get the constant part
+            strcpy(str, lines[i].operand + 2);
+            str[strlen(str) - 1] = '\0';
+            int size = ceil(strlen(str) / 2);
+            // if character operand, convert to ASCII value
+            if (lines[i].operand[0] == 'C')
+            {
+                size = strlen(str);
+                char temp[MAX] = "";
+                int index = 0;
+                while (str[index] != '\0')
+                {
+                    char buffer[MAX];
+                    sprintf(buffer, "%X", str[index]);
+                    strcat(temp, buffer);
+                    index++;
+                }
+                strcpy(str, temp);
+            }
+
+            strcat(str, " ");
+            strcat(current->text, str);
+            current->length += size;
+        }
+        if (strcmp(lines[i].op, "WORD") == 0)
+        {
+            strcpy(str, lines[i].operand);
+            int num = atoi(str);
+            sprintf(str, "%X", num);
+            padZero(str, 6);
+
+            strcat(str, " ");
+            strcat(current->text, str);
+            current->length += 3;
+        }
+        // if text record length exceeded, write it and initialise new text record
+        if (current->length > 30)
+        {
+            writeTextRecord(current, recordFile);
+            current->length = 0;
+            strcpy(current->startingAddress, lines[i + 1].loc);
+            strcpy(current->text, "");
+        }
     }
+    // write last text record
+    if (current->length > 0)
+        writeTextRecord(current, recordFile);
+    // write end record
+    sprintf(str, "E %s", startingAddress);
+    fputs(str, recordFile);
     printf("Pass 2 of 2 completed");
     return 0;
 }
@@ -91,7 +192,6 @@ char *getOpcode(char op[])
             return optab[i].opcode;
         }
     }
-    printf("Opcode not found for %s\n", op);
     return NULL;
 }
 
@@ -105,7 +205,6 @@ char *searchSymtab(char sym[])
             return symtab[i].loc;
         }
     }
-    printf("Address not found for %s\n", sym);
     return NULL;
 }
 
@@ -140,11 +239,11 @@ void readInputs()
 }
 
 // pad zeroes to left or trim to make string length 6
-char *padZero(char text[])
+char *padZero(char text[], int length)
 {
     char zeroes[] = "000000";
     // put required no of zeroes before text
-    int c = strlen(text) > 6 ? 0 : strlen(text) - 6;
+    int c = strlen(text) > length ? 0 : length - strlen(text);
     zeroes[c] = '\0';
     strcat(zeroes, text);
     strcpy(text, zeroes);
@@ -153,9 +252,11 @@ char *padZero(char text[])
     return text;
 }
 
-void writeTextRecord(struct line *myline, FILE *file)
+void writeTextRecord(struct TEXTRECORD *record, FILE *file)
 {
     char lineStr[MAX];
-    sprintf(lineStr, "%s\t%s\t%s\t%s\n", myline->loc, myline->label, myline->op, myline->operand);
+    char len[MAX];
+    sprintf(len, "%X", record->length);
+    sprintf(lineStr, "T %s %s %s\n", padZero(record->startingAddress, 6), padZero(len, 2), record->text);
     fputs(lineStr, file);
 }
