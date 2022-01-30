@@ -151,7 +151,7 @@ int main()
         }
         else if (strcmp(currentLine->op, "RESB") == 0)
         {
-            int size = atoi(currentLine->operand);0
+            int size = atoi(currentLine->operand);
             locctr += size;
         }
         else if (strcmp(currentLine->op, "END") == 0)
