@@ -92,6 +92,10 @@ int main()
         // initialise location counter to starting address
         strcpy(startingAddress, currentLine->operand);
         strcpy(pgmName, currentLine->label);
+        if (strcmp(currentLine->label, "**") != 0)
+        {
+            putSym(currentLine->label, currentLine->operand);
+        }
     }
     else
     {
@@ -116,8 +120,6 @@ int main()
     {
         sscanf(str, "%s\t%s\t%s", currentLine->label, currentLine->op, currentLine->operand);
         sprintf(currentLine->loc, "%X", locctr);
-
-
 
         // if symbol is present, put in symtab
         if (strcmp(currentLine->label, "**") != 0)
@@ -271,6 +273,11 @@ int main()
             currentRecord->length += 3;
         }
 
+        if (strcmp(currentLine->op, "RESW") == 0 || strcmp(currentLine->op, "RESB") == 0)
+        {
+            writeCurrentRecord();
+        }
+
         printf("%s\t%s\t%s\t%s\n", currentLine->loc, currentLine->label, currentLine->op, currentLine->operand);
     }
     // write last text record
@@ -370,10 +377,10 @@ void putSym(char label[], char loc[])
         // symbol not found in symtab
         strcpy(symtab[symtabLength].loc, loc);
         strcpy(symtab[symtabLength].sym, label);
-        sprintf(symStr, "%s\t%s\n", label, loc);
-        fputs(symStr, symtabFile);
         symtabLength++;
     }
+    sprintf(symStr, "%s\t%s\n", label, loc);
+    fputs(symStr, symtabFile);
 }
 
 // pad zeroes to left or trim to fit length
