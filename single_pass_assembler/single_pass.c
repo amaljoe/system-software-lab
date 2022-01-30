@@ -117,6 +117,8 @@ int main()
         sscanf(str, "%s\t%s\t%s", currentLine->label, currentLine->op, currentLine->operand);
         sprintf(currentLine->loc, "%X", locctr);
 
+
+
         // if symbol is present, put in symtab
         if (strcmp(currentLine->label, "**") != 0)
         {
@@ -195,7 +197,6 @@ int main()
                 if (ref == NULL)
                 {
                     // symbol not found in symtab
-                    // printf("Address not found for %s\n", currentLine->operand);
                     char symLoc[MAX];
                     sprintf(symLoc, "%X", locctr - 2);
                     putSymNode(currentLine->operand, symLoc);
