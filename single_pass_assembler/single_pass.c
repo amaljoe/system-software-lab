@@ -117,8 +117,6 @@ int main()
         sscanf(str, "%s\t%s\t%s", currentLine->label, currentLine->op, currentLine->operand);
         sprintf(currentLine->loc, "%X", locctr);
 
-        printf("opcode: %s\n", currentLine->op);
-
         // if symbol is present, put in symtab
         if (strcmp(currentLine->label, "**") != 0)
         {
@@ -173,7 +171,6 @@ int main()
         sscanf(currentRecord->startingAddress, "%X", &sAddress);
         if (locctr - sAddress > 30)
         {
-            printf("%d %d %s\n", locctr, sAddress, currentRecord->startingAddress);
             writeCurrentRecord();
         }
 
@@ -198,7 +195,7 @@ int main()
                 if (ref == NULL)
                 {
                     // symbol not found in symtab
-                    printf("Address not found for %s\n", currentLine->operand);
+                    // printf("Address not found for %s\n", currentLine->operand);
                     char symLoc[MAX];
                     sprintf(symLoc, "%X", locctr - 2);
                     putSymNode(currentLine->operand, symLoc);
@@ -208,7 +205,6 @@ int main()
                     if (strcmp(ref->loc, "**") == 0)
                     {
                         // symbol address not found in symtab
-                        printf("Address not found for %s\n", currentLine->operand);
                         char symLoc[MAX];
                         sprintf(symLoc, "%X", locctr - 2);
                         putSymNode(currentLine->operand, symLoc);
@@ -220,7 +216,6 @@ int main()
                 }
             }
             padZero(address, 4);
-            printf("address: %s\n", address);
             // x = 1 in objcode if indexed
             if (indexed)
             {
@@ -274,6 +269,8 @@ int main()
             strcat(currentRecord->text, str);
             currentRecord->length += 3;
         }
+
+        printf("%s\t%s\t%s\t%s\n", currentLine->loc, currentLine->label, currentLine->op, currentLine->operand);
     }
     // write last text record
     writeCurrentRecord();
@@ -312,7 +309,6 @@ struct SYMBOL *searchSymtab(char sym[])
 
 void putSymNode(char label[], char loc[])
 {
-    printf("putting %s and %s %d\n", label, loc, symtabLength);
     struct SYMBOL *ref = searchSymtab(label);
     // add new entry in symtab if symbol not found
     if (ref == NULL)
