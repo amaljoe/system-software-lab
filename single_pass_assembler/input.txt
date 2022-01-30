@@ -6,15 +6,15 @@ LENGTH      RESW        1
 BUFFER      RESB        4096
 FIRST       STL         RETADR
 CLOOP       JSUB        RDREC
-            LDA         LENGTH
-            COMP        ZERO
-            JEQ         ENDFIL
-            JSUB        WRREC
-            J           CLOOP
+**        LDA         LENGTH
+**            COMP        ZERO
+**            JEQ         ENDFIL
+**            JSUB        WRREC
+**            J           CLOOP
 ENDFIL      LDA         EOF
-            STA         BUFFER
-            JSUB        WRREC
-            RSUB 
+**            STA         BUFFER
+**            JSUB        WRREC
+**            RSUB 
 RDREC       LDX         ZERO
-            LDA         ZERO
+**            LDA         ZERO
 WRREC       LDX         ZERO

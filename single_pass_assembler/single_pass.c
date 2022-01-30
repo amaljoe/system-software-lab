@@ -116,6 +116,9 @@ int main()
     {
         sscanf(str, "%s\t%s\t%s", currentLine->label, currentLine->op, currentLine->operand);
         sprintf(currentLine->loc, "%X", locctr);
+
+        printf("opcode: %s\n", currentLine->op);
+
         // if symbol is present, put in symtab
         if (strcmp(currentLine->label, "**") != 0)
         {
@@ -165,10 +168,17 @@ int main()
             return 1;
         }
 
-        // divider
+        // if text record will exceed max length, write it and initialise new text record
+        int sAddress;
+        sscanf(currentRecord->startingAddress, "%X", &sAddress);
+        if (locctr - sAddress > 30)
+        {
+            printf("%d %d %s\n", locctr, sAddress, currentRecord->startingAddress);
+            writeCurrentRecord();
+        }
 
         char *opcode = getOpcode(currentLine->op);
-        char *address = "0";
+        char address[MAX] = "0";
         bool indexed = false;
         if (opcode != NULL)
         {
@@ -191,14 +201,26 @@ int main()
                     printf("Address not found for %s\n", currentLine->operand);
                     char symLoc[MAX];
                     sprintf(symLoc, "%X", locctr - 2);
-                    putSymNode(currentLine->label, symLoc);
+                    putSymNode(currentLine->operand, symLoc);
                 }
                 else
                 {
-                    address = ref->loc;
+                    if (strcmp(ref->loc, "**") == 0)
+                    {
+                        // symbol address not found in symtab
+                        printf("Address not found for %s\n", currentLine->operand);
+                        char symLoc[MAX];
+                        sprintf(symLoc, "%X", locctr - 2);
+                        putSymNode(currentLine->operand, symLoc);
+                    }
+                    else
+                    {
+                        strcpy(address, ref->loc);
+                    }
                 }
             }
             padZero(address, 4);
+            printf("address: %s\n", address);
             // x = 1 in objcode if indexed
             if (indexed)
             {
@@ -209,11 +231,6 @@ int main()
                 bit += 8;
                 sprintf(tmp, "%X", bit);
                 address[0] = tmp[0];
-            }
-            // if text record will exceed max length, write it and initialise new text record
-            if (currentRecord->length + 3 > 30)
-            {
-                writeCurrentRecord();
             }
             strcpy(str, opcode);
             strcat(str, address);
@@ -242,22 +259,12 @@ int main()
                 }
                 strcpy(str, temp);
             }
-            // if text record will exceed max length, write it and initialise new text record
-            if (currentRecord->length + size > 30)
-            {
-                writeCurrentRecord();
-            }
             strcat(str, " ");
             strcat(currentRecord->text, str);
             currentRecord->length += size;
         }
         if (strcmp(currentLine->op, "WORD") == 0)
         {
-            // if text record will exceed max length, write it and initialise new text record
-            if (currentRecord->length + 3 > 30)
-            {
-                writeCurrentRecord();
-            }
             strcpy(str, currentLine->operand);
             int num = atoi(str);
             sprintf(str, "%X", num);
@@ -269,7 +276,6 @@ int main()
         }
     }
     // write last text record
-
     writeCurrentRecord();
     // write end record
     sprintf(str, "E %s", startingAddress);
@@ -306,13 +312,13 @@ struct SYMBOL *searchSymtab(char sym[])
 
 void putSymNode(char label[], char loc[])
 {
-    printf("putting %s and %s", label, loc);
+    printf("putting %s and %s %d\n", label, loc, symtabLength);
     struct SYMBOL *ref = searchSymtab(label);
     // add new entry in symtab if symbol not found
     if (ref == NULL)
     {
-        strcpy(symtab[symtabLength].loc, loc);
-        strcpy(symtab[symtabLength].sym, "");
+        strcpy(symtab[symtabLength].loc, "**");
+        strcpy(symtab[symtabLength].sym, label);
         symtab[symtabLength].nodes = (struct NODE *)malloc(sizeof(struct NODE));
         strcpy(symtab[symtabLength].nodes->address, "");
         symtab[symtabLength].nodes->next = NULL;
@@ -323,6 +329,7 @@ void putSymNode(char label[], char loc[])
     struct NODE *last = ref->nodes;
     while (last->next != NULL)
         last = last->next;
+
     last->next = (struct NODE *)malloc(sizeof(struct NODE));
     last = last->next;
     strcpy(last->address, loc);
@@ -388,7 +395,8 @@ char *padZero(char text[], int length)
 
 void writeCurrentRecord()
 {
-    if (currentRecord->length = 0)
+
+    if (currentRecord->length == 0)
     {
         return;
     }
