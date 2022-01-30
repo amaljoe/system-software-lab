@@ -94,6 +94,7 @@ int main()
         {
             putSym(currentLine->label, currentLine->operand);
         }
+        printf("%s\t%s\t%s\t%s\n", currentLine->operand, currentLine->label, currentLine->op, currentLine->operand);
     }
     else
     {
@@ -283,7 +284,7 @@ int main()
     // write end record
     sprintf(str, "E %s", startingAddress);
     fputs(str, recordFile);
-    printf("Pass 2 of 2 completed");
+    printf("Single pass assembly completed");
     return 0;
 }
 
