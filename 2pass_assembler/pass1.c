@@ -6,7 +6,7 @@
 #define MAX 50
 #define MAXLINES 150
 
-struct line
+struct LINE
 {
     char loc[MAX];
     char label[MAX];
@@ -27,7 +27,7 @@ int optabLength = 0;
 // length of symtab
 int symtabLength = 0;
 
-void writeLine(struct line *, FILE *);
+void writeLine(struct LINE *, FILE *);
 void readOptab();
 char *getOpcode(char[]);
 
@@ -152,7 +152,7 @@ void readOptab()
     }
 }
 
-void writeLine(struct line *myline, FILE *file)
+void writeLine(struct LINE *myline, FILE *file)
 {
     char lineStr[MAX];
     sprintf(lineStr, "%s\t%s\t%s\t%s\n", myline->loc, myline->label, myline->op, myline->operand);

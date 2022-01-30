@@ -1,4 +1,4 @@
-//incomplete
+// incomplete
 
 #include <stdio.h>
 #include <string.h>
@@ -9,7 +9,7 @@
 #define MAX 200
 #define MAXLINES 250
 
-struct line
+struct LINE
 {
     char loc[MAX];
     char label[MAX];
@@ -23,19 +23,18 @@ struct
     char opcode[MAX];
 } optab[MAXLINES];
 
-struct node {
+struct NODE
+{
     char address[MAX];
-    struct node* next;
+    struct NODE *next;
 };
 
-
-struct
+struct SYMBOL
 {
     char sym[MAX];
     char loc[MAX];
-    struct node* nodes;
+    struct NODE *nodes;
 } symtab[MAXLINES];
-
 
 struct TEXTRECORD
 {
@@ -52,58 +51,132 @@ int optabLength = 0;
 int symtabLength = 0;
 // length of program in hexadecimal
 char prolen[MAX];
+// input line currently working on
+struct LINE *currentLine;
+// text record currently working on
+struct TEXTRECORD *currentRecord;
+// location counter
+int locctr = 0;
+
+FILE *inputFile;
+FILE *recordFile;
+FILE *symtabFile;
 
 char *padZero(char[], int);
-void readInputs();
-char *searchSymtab(char[]);
+void readOptab();
+struct SYMBOL *searchSymtab(char[]);
+void putSym(char[], char[]);
+void putSymNode(char[], char[]);
 char *getOpcode(char[]);
-void writeTextRecord(struct TEXTRECORD *, FILE *);
+void writeCurrentRecord();
 
 int main()
 {
-    int locctr;
     char startingAddress[MAX] = "0";
     char pgmName[MAX] = "";
     char str[MAX];
 
-    FILE *recordFile = fopen("record.txt", "w");
-    // store symtab, optab, intermediate file and program length in memory
-    readInputs();
-    int i = 0;
-    if (strcmp(lines[i].op, "START") == 0)
+    currentLine = (struct LINE *)malloc(sizeof(struct LINE));
+
+    recordFile = fopen("record.txt", "w");
+    symtabFile = fopen("symtab.txt", "w");
+    inputFile = fopen("input.txt", "r");
+
+    // store optab in memory
+    readOptab();
+    // check first line
+    fgets(str, MAX, inputFile);
+    sscanf(str, "%s\t%s\t%s", currentLine->label, currentLine->op, currentLine->operand);
+    if (strcmp(currentLine->op, "START") == 0)
     {
-        strcpy(startingAddress, lines[i].operand);
-        strcpy(pgmName, lines[i].label);
-        i++;
+        // initialise location counter to starting address
+        strcpy(startingAddress, currentLine->operand);
+        strcpy(pgmName, currentLine->label);
     }
+    else
+    {
+        strcpy(startingAddress, "0");
+        // reset file pointer to start
+        rewind(inputFile);
+    }
+    sscanf(startingAddress, "%X", &locctr);
+
     // write header record
-    sprintf(str, "H %s %s %s\n", padZero(pgmName, 6), padZero(startingAddress, 6), padZero(prolen, 6));
+    sprintf(str, "H %s %s\n", padZero(pgmName, 6), padZero(startingAddress, 6));
     fputs(str, recordFile);
 
     // initialise first text record
-    struct TEXTRECORD *current = (struct TEXTRECORD *)malloc(sizeof(struct TEXTRECORD));
-    current->length = 0;
-    strcpy(current->startingAddress, lines[i].loc);
-    strcpy(current->text, "");
+    currentRecord = (struct TEXTRECORD *)malloc(sizeof(struct TEXTRECORD));
+    currentRecord->length = 0;
+    strcpy(currentRecord->startingAddress, startingAddress);
+    strcpy(currentRecord->text, "");
 
     // loop through all instructions in intermediate file
-    for (; i < num; i++)
+    while (fgets(str, MAX, inputFile) != NULL)
     {
-        if (strcmp(lines[i].op, "END") == 0)
+        sscanf(str, "%s\t%s\t%s", currentLine->label, currentLine->op, currentLine->operand);
+        sprintf(currentLine->loc, "%X", locctr);
+        // if symbol is present, put in symtab
+        if (strcmp(currentLine->label, "**") != 0)
         {
+            putSym(currentLine->label, currentLine->loc);
+        }
+        if (getOpcode(currentLine->op) != NULL)
+        {
+            // opcode found in optab
+            locctr += 3;
+        }
+        else if (strcmp(currentLine->op, "WORD") == 0)
+        {
+            locctr += 3;
+        }
+        else if (strcmp(currentLine->op, "BYTE") == 0)
+        {
+            int c = strlen(currentLine->operand) - 3;
+            if (currentLine->operand[0] == 'X')
+            {
+                // hexadecimal operand
+                locctr += ceil(c / 2);
+            }
+            else
+            {
+                // character operand
+                locctr += c;
+            }
+        }
+        else if (strcmp(currentLine->op, "RESW") == 0)
+        {
+            int size = atoi(currentLine->operand);
+            locctr += size * 3;
+        }
+        else if (strcmp(currentLine->op, "RESB") == 0)
+        {
+            int size = atoi(currentLine->operand);0
+            locctr += size;
+        }
+        else if (strcmp(currentLine->op, "END") == 0)
+        {
+            // stop when END is found
             break;
         }
-        char *opcode = getOpcode(lines[i].op);
+        else
+        {
+            printf("Invalid instruction: %s\n", str);
+            return 1;
+        }
+
+        // divider
+
+        char *opcode = getOpcode(currentLine->op);
         char *address = "0";
         bool indexed = false;
-
         if (opcode != NULL)
         {
             // op found in optab
-            if (strcmp(lines[i].operand, "**") != 0)
+            if (strcmp(currentLine->operand, "**") != 0)
             {
                 // operand present in instruction
-                char *operand = lines[i].operand;
+                char *operand = currentLine->operand;
                 char *comma = strchr(operand, ',');
                 indexed = comma != NULL;
                 if (indexed)
@@ -111,12 +184,19 @@ int main()
                     // operand is before ','
                     *comma = '\0';
                 }
-                address = searchSymtab(operand);
-            }
-            if (address == NULL)
-            {
-                printf("Address not found for %s\n", lines[i].operand);
-                return 1;
+                struct SYMBOL *ref = searchSymtab(operand);
+                if (ref == NULL)
+                {
+                    // symbol not found in symtab
+                    printf("Address not found for %s\n", currentLine->operand);
+                    char symLoc[MAX];
+                    sprintf(symLoc, "%X", locctr - 2);
+                    putSymNode(currentLine->label, symLoc);
+                }
+                else
+                {
+                    address = ref->loc;
+                }
             }
             padZero(address, 4);
             // x = 1 in objcode if indexed
@@ -130,20 +210,25 @@ int main()
                 sprintf(tmp, "%X", bit);
                 address[0] = tmp[0];
             }
+            // if text record will exceed max length, write it and initialise new text record
+            if (currentRecord->length + 3 > 30)
+            {
+                writeCurrentRecord();
+            }
             strcpy(str, opcode);
             strcat(str, address);
             strcat(str, " ");
-            strcat(current->text, str);
-            current->length += 3;
+            strcat(currentRecord->text, str);
+            currentRecord->length += 3;
         }
-        else if (strcmp(lines[i].op, "BYTE") == 0)
+        else if (strcmp(currentLine->op, "BYTE") == 0)
         {
             // get the constant part
-            strcpy(str, lines[i].operand + 2);
+            strcpy(str, currentLine->operand + 2);
             str[strlen(str) - 1] = '\0';
             int size = ceil(strlen(str) / 2);
             // if character operand, convert to ASCII value
-            if (lines[i].operand[0] == 'C')
+            if (currentLine->operand[0] == 'C')
             {
                 size = strlen(str);
                 char temp[MAX] = "";
@@ -157,34 +242,35 @@ int main()
                 }
                 strcpy(str, temp);
             }
-
+            // if text record will exceed max length, write it and initialise new text record
+            if (currentRecord->length + size > 30)
+            {
+                writeCurrentRecord();
+            }
             strcat(str, " ");
-            strcat(current->text, str);
-            current->length += size;
+            strcat(currentRecord->text, str);
+            currentRecord->length += size;
         }
-        if (strcmp(lines[i].op, "WORD") == 0)
+        if (strcmp(currentLine->op, "WORD") == 0)
         {
-            strcpy(str, lines[i].operand);
+            // if text record will exceed max length, write it and initialise new text record
+            if (currentRecord->length + 3 > 30)
+            {
+                writeCurrentRecord();
+            }
+            strcpy(str, currentLine->operand);
             int num = atoi(str);
             sprintf(str, "%X", num);
             padZero(str, 6);
 
             strcat(str, " ");
-            strcat(current->text, str);
-            current->length += 3;
-        }
-        // if text record length exceeded, write it and initialise new text record
-        if (current->length > 30)
-        {
-            writeTextRecord(current, recordFile);
-            current->length = 0;
-            strcpy(current->startingAddress, lines[i + 1].loc);
-            strcpy(current->text, "");
+            strcat(currentRecord->text, str);
+            currentRecord->length += 3;
         }
     }
     // write last text record
-    if (current->length > 0)
-        writeTextRecord(current, recordFile);
+
+    writeCurrentRecord();
     // write end record
     sprintf(str, "E %s", startingAddress);
     fputs(str, recordFile);
@@ -205,21 +291,46 @@ char *getOpcode(char op[])
     return NULL;
 }
 
-// returns address for given symbol or null if not found
-char *searchSymtab(char sym[])
+// returns SYMBOL entry for given symbol or null if not found
+struct SYMBOL *searchSymtab(char sym[])
 {
     for (int i = 0; i < symtabLength; i++)
     {
         if (strcmp(sym, symtab[i].sym) == 0)
         {
-            return symtab[i].loc;
+            return &symtab[i];
         }
     }
     return NULL;
 }
 
-// read symtab, optab, intermediate file and program length
-void readInputs()
+void putSymNode(char label[], char loc[])
+{
+    printf("putting %s and %s", label, loc);
+    struct SYMBOL *ref = searchSymtab(label);
+    // add new entry in symtab if symbol not found
+    if (ref == NULL)
+    {
+        strcpy(symtab[symtabLength].loc, loc);
+        strcpy(symtab[symtabLength].sym, "");
+        symtab[symtabLength].nodes = (struct NODE *)malloc(sizeof(struct NODE));
+        strcpy(symtab[symtabLength].nodes->address, "");
+        symtab[symtabLength].nodes->next = NULL;
+        ref = &symtab[symtabLength];
+        symtabLength++;
+    }
+    // add address as last node
+    struct NODE *last = ref->nodes;
+    while (last->next != NULL)
+        last = last->next;
+    last->next = (struct NODE *)malloc(sizeof(struct NODE));
+    last = last->next;
+    strcpy(last->address, loc);
+    last->next = NULL;
+}
+
+// read optab
+void readOptab()
 {
     FILE *optabFile = fopen("optab.txt", "r");
     char str[MAX];
@@ -229,23 +340,36 @@ void readInputs()
         sscanf(str, "%s\t%s", optab[optabLength].op, optab[optabLength].opcode);
         optabLength++;
     }
+}
 
-    FILE *interFile = fopen("intermediate.txt", "r");
-    while (fgets(str, MAX, interFile) != NULL)
+void putSym(char label[], char loc[])
+{
+    char symStr[MAX];
+    struct SYMBOL *ref = searchSymtab(label);
+    if (ref != NULL)
     {
-        sscanf(str, "%s\t%s\t%s\t%s", lines[num].loc, lines[num].label, lines[num].op, lines[num].operand);
-        num++;
+        // symbol already present in symtab
+        strcpy(ref->loc, loc);
+        struct NODE *next = ref->nodes->next;
+        while (next != NULL)
+        {
+            writeCurrentRecord();
+            strcpy(currentRecord->startingAddress, next->address);
+            currentRecord->length += 2;
+            strcpy(currentRecord->text, ref->loc);
+            writeCurrentRecord();
+            next = next->next;
+        }
     }
-
-    FILE *symtabFile = fopen("symtab.txt", "r");
-    while (fgets(str, MAX, symtabFile) != NULL)
+    else
     {
-        sscanf(str, "%s\t%s", symtab[symtabLength].sym, symtab[symtabLength].loc);
+        // symbol not found in symtab
+        strcpy(symtab[symtabLength].loc, loc);
+        strcpy(symtab[symtabLength].sym, label);
+        sprintf(symStr, "%s\t%s\n", label, loc);
+        fputs(symStr, symtabFile);
         symtabLength++;
     }
-
-    FILE *lenFile = fopen("prolen.txt", "r");
-    fgets(prolen, MAX, lenFile);
 }
 
 // pad zeroes to left or trim to fit length
@@ -262,11 +386,20 @@ char *padZero(char text[], int length)
     return text;
 }
 
-void writeTextRecord(struct TEXTRECORD *record, FILE *file)
+void writeCurrentRecord()
 {
+    if (currentRecord->length = 0)
+    {
+        return;
+    }
     char lineStr[MAX];
     char len[MAX];
-    sprintf(len, "%X", record->length);
-    sprintf(lineStr, "T %s %s %s\n", padZero(record->startingAddress, 6), padZero(len, 2), record->text);
-    fputs(lineStr, file);
+    sprintf(len, "%X", currentRecord->length);
+    sprintf(lineStr, "T %s %s %s\n", padZero(currentRecord->startingAddress, 6), padZero(len, 2), currentRecord->text);
+    fputs(lineStr, recordFile);
+
+    // initialise new text record
+    currentRecord->length = 0;
+    sprintf(currentRecord->startingAddress, "%X", locctr);
+    strcpy(currentRecord->text, "");
 }

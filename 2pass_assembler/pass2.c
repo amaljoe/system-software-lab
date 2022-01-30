@@ -7,7 +7,7 @@
 #define MAX 200
 #define MAXLINES 250
 
-struct line
+struct LINE
 {
     char loc[MAX];
     char label[MAX];
