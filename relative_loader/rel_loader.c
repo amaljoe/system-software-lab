@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #define MAX 100
 
@@ -16,6 +17,7 @@ int main()
         if (str[0] == 'H')
         {
             sscanf(str + 9, "%x", &location);
+            reloc -= location;
             continue;
         }
         // stop if end record reached
@@ -23,21 +25,25 @@ int main()
             break;
 
         int startingAddress;
-        // extract starting address from text record
+        //  extract starting address from text record
         sscanf(str, "T%x", &startingAddress);
-        // put xx for empty locations
-        while (location < startingAddress)
-        {
-            printf("%x xx\n", location++);
-        }
+        location = startingAddress + reloc;
+        int mask;
+        sscanf(str + 12, "%x", &mask);
         // point ptr to start of object code in text record
-        char *ptr = str + 12;
-        for (int i = 0; ptr[i] != '\0' && ptr[i] != '\n'; i += 2)
+        char *ptr = str + 16;
+        int len = 0;
+        for (int i = 0, c = 0; ptr[i] != '\0' && ptr[i] != '\n'; i += len)
         {
-            // skip white spaces
-            if (ptr[i] == ' ')
-                i++;
-            printf("%x %c%c\n", location++, ptr[i], ptr[i + 1]);
+            int bit = mask >> (11 - c++) & 0x1;
+            char temp[MAX];
+            sscanf(ptr + i, "%s", temp);
+            len = strlen(temp);
+            int code;
+            sscanf(temp, "%x", &code);
+            code = bit ? code + reloc : code;
+            printf("%x %x\n", location, code);
+            location += len++ / 2;
         }
     }
     return 0;
